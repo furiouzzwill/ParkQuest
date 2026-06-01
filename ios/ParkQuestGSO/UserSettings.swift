@@ -28,6 +28,16 @@ final class UserSettings {
     /// Generated once on first launch; persisted forever.
     let userID: String
 
+    /// The role assigned to this account (explorer or city admin).
+    var userType: UserType {
+        didSet { UserDefaults.standard.set(userType.rawValue, forKey: Keys.userType) }
+    }
+
+    /// The city this user belongs to (e.g. "Greensboro, NC").
+    var city: String {
+        didSet { UserDefaults.standard.set(city, forKey: Keys.city) }
+    }
+
     // MARK: - Computed
 
     /// Up to 2 initials from the username, uppercased. Falls back to "PQ".
@@ -45,6 +55,10 @@ final class UserSettings {
     init() {
         username                = UserDefaults.standard.string(forKey: Keys.username)  ?? ""
         hasCompletedOnboarding  = UserDefaults.standard.bool(forKey: Keys.onboarding)
+        city                    = UserDefaults.standard.string(forKey: Keys.city) ?? "Greensboro, NC"
+
+        let rawType = UserDefaults.standard.string(forKey: Keys.userType) ?? ""
+        userType = UserType(rawValue: rawType) ?? .explorer
 
         // Generate userID once; reuse on every subsequent launch.
         if let stored = UserDefaults.standard.string(forKey: Keys.userID) {
@@ -60,11 +74,13 @@ final class UserSettings {
 
     /// Called from OnboardingView when the user taps "Start Exploring".
     func createCloudProfile() {
-        let uid  = userID
-        let name = username
+        let uid    = userID
+        let name   = username
+        let type   = userType
+        let cityID = SeedData.allCities.first(where: { $0.displayName == city })?.id ?? "gso"
         Task {
             do {
-                try await SupabaseService.shared.createProfile(id: uid, username: name)
+                try await SupabaseService.shared.createProfile(id: uid, username: name, userType: type, cityID: cityID)
             } catch {
                 print("⚠️ Profile creation error: \(error)")
             }
@@ -82,8 +98,10 @@ final class UserSettings {
     }
 
     private enum Keys {
-        static let username  = "pq_username"
+        static let username   = "pq_username"
         static let onboarding = "pq_hasCompletedOnboarding"
-        static let userID    = "pq_userID"
+        static let userID     = "pq_userID"
+        static let userType   = "pq_userType"
+        static let city       = "pq_city"
     }
 }

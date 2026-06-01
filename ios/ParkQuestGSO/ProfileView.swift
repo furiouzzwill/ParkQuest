@@ -48,9 +48,10 @@ struct ProfileView: View {
                     .font(.pqLabel)
                     .foregroundStyle(Theme.primaryGreen)
                     .fontWeight(.semibold)
-                Text("Greensboro, NC")
+                Text(userSettings.city)
                     .font(.pqLabel)
                     .foregroundStyle(Theme.mutedText)
+                userTypeBadge
             }
             HStack(spacing: 24) {
                 VStack {
@@ -100,6 +101,23 @@ struct ProfileView: View {
         case 150..<200: return "Senior Explorer"
         default: return "Park Ranger"
         }
+    }
+
+    private var userTypeBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: userSettings.userType.symbol)
+                .font(.system(size: 10, weight: .bold))
+            Text(userSettings.userType.label.uppercased())
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .tracking(1)
+        }
+        .foregroundStyle(userSettings.userType == .cityAdmin ? Theme.amber : Theme.mossGreen)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(
+            (userSettings.userType == .cityAdmin ? Theme.amber : Theme.mossGreen).opacity(0.12),
+            in: .capsule
+        )
     }
 
     private var badgeGrid: some View {

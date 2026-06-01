@@ -6,6 +6,45 @@
 import SwiftUI
 import CoreLocation
 
+// MARK: - User Types
+
+/// Defines the two roles in ParkQuest.
+/// - explorer: end user exploring parks in their city
+/// - cityAdmin: city-level account that manages parks and branding for a deployed city instance
+enum UserType: String, CaseIterable, Codable {
+    case explorer  = "explorer"
+    case cityAdmin = "city_admin"
+
+    var label: String {
+        switch self {
+        case .explorer:  return "Park Explorer"
+        case .cityAdmin: return "City Admin"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .explorer:  return "figure.walk"
+        case .cityAdmin: return "building.2.fill"
+        }
+    }
+}
+
+// MARK: - City
+
+/// A city deployment of ParkQuest. Cities are the top-level account tier;
+/// each city owns a set of parks that explorers discover within it.
+struct City: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let state: String
+    let parks: [Park]
+
+    var displayName: String { "\(name), \(state)" }
+}
+
+// MARK: - Quest Kinds
+
 enum QuestKind {
     case landmark
     case facility
@@ -163,4 +202,18 @@ enum SeedData {
              badgeName: "Guilford Explorer", badgeSymbol: "flag.fill",
              quests: [], isLocked: true)
     ]
+
+    // -------------------------------------------------------------------------
+    // City: Greensboro, NC (GSO) — first deployed city instance
+    // Additional cities (Raleigh, Charlotte, etc.) follow the same structure.
+    // -------------------------------------------------------------------------
+    static let greensboro = City(
+        id: "gso",
+        name: "Greensboro",
+        state: "NC",
+        parks: [barberPark] + lockedParks
+    )
+
+    /// All city instances available in this build.
+    static let allCities: [City] = [greensboro]
 }

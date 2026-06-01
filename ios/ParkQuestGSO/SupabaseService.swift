@@ -30,8 +30,13 @@ final class SupabaseService {
     // MARK: - Profiles
 
     /// Creates a new profile row. Uses UPSERT so re-running is safe.
-    func createProfile(id: String, username: String) async throws {
-        let body: [String: String] = ["id": id, "username": username]
+    func createProfile(id: String, username: String, userType: UserType = .explorer, cityID: String = "gso") async throws {
+        let body: [String: String] = [
+            "id":        id,
+            "username":  username,
+            "user_type": userType.rawValue,
+            "city_id":   cityID
+        ]
         var req = try request(path: "/rest/v1/profiles", method: "POST", body: body)
         // Upsert: if row with same id exists, update username
         req.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer")

@@ -22,10 +22,23 @@ enum SupabaseConfig {
 // SUPABASE SQL — run this once in your SQL Editor
 // ────────────────────────────────────────────────────────────────
 //
+// -- 0. Cities (one row per deployed city instance)
+// create table public.cities (
+//   id          text        primary key,   -- e.g. 'gso'
+//   name        text        not null,      -- e.g. 'Greensboro'
+//   state       text        not null,      -- e.g. 'NC'
+//   created_at  timestamptz not null default now()
+// );
+// insert into public.cities (id, name, state) values ('gso', 'Greensboro', 'NC');
+//
 // -- 1. Profiles (one row per device / user)
+// --    user_type: 'explorer' (default end user) or 'city_admin' (city account manager)
+// --    city_id:   references the city this account belongs to
 // create table public.profiles (
 //   id          uuid        primary key,
 //   username    text        not null,
+//   user_type   text        not null default 'explorer',
+//   city_id     text        references cities(id) on delete set null,
 //   created_at  timestamptz not null default now(),
 //   updated_at  timestamptz not null default now()
 // );
