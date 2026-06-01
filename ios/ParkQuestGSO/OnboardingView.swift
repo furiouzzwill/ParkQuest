@@ -91,7 +91,7 @@ struct OnboardingView: View {
                     .font(.system(size: 36, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .tracking(1)
-                Text("GREENSBORO")
+                Text(userSettings.city.components(separatedBy: ",").first?.uppercased() ?? "GREENSBORO")
                     .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .tracking(3)
                     .foregroundStyle(.white.opacity(0.75))
@@ -106,7 +106,7 @@ struct OnboardingView: View {
     private var welcomeSection: some View {
         VStack(spacing: 32) {
             VStack(spacing: 12) {
-                Text("Explore Greensboro's Parks")
+                Text("Explore \(userSettings.city.components(separatedBy: ",").first ?? "Greensboro")'s Parks")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.center)
