@@ -125,29 +125,27 @@ final class UserSettings {
         hasCompletedOnboarding = false
     }
 
-    /// City-Partner signup helper: creates the city in Supabase, then a
-    /// city_admin profile, and updates local state so the app routes
-    /// straight to CityAdminView (skipping the explorer onboarding flow).
-    func applyCityAdminSignUp(authUser: AuthUser, cityName: String, state: String) {
-        let id = UUID().uuidString
-        cityID    = id
-        city      = "\(cityName), \(state)"
-        username  = cityName              // placeholder so initials still render
+    /// City-Partner signup helper: invite has already been redeemed (and the
+    /// city pre-exists in Supabase). This just creates the city_admin profile
+    /// and updates local state so the app routes straight to CityAdminView.
+    func applyCityAdminSignUp(authUser: AuthUser, redeemed: RedeemedCity) {
+        cityID    = redeemed.id
+        city      = "\(redeemed.name), \(redeemed.state)"
+        username  = redeemed.name         // placeholder so initials still render
         userType  = .cityAdmin
         applyAuthUser(authUser)
         hasCompletedOnboarding = true     // city admins don't see the explorer onboarding
 
         Task {
             do {
-                try await SupabaseService.shared.createCity(id: id, name: cityName, state: state)
                 try await SupabaseService.shared.createProfile(
                     id: authUser.id,
-                    username: cityName,
+                    username: redeemed.name,
                     userType: .cityAdmin,
-                    cityID: id
+                    cityID: redeemed.id
                 )
             } catch {
-                print("⚠️ City admin signup error: \(error)")
+                print("⚠️ City admin profile creation error: \(error)")
             }
         }
     }
