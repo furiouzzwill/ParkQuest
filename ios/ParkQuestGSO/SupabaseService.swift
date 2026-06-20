@@ -27,6 +27,21 @@ final class SupabaseService {
     static let shared = SupabaseService()
     private init() {}
 
+    // MARK: - Cities
+
+    /// Inserts a new city row. Uses UPSERT so re-signing-up with the same
+    /// id is safe (will overwrite name/state).
+    func createCity(id: String, name: String, state: String) async throws {
+        let body: [String: String] = [
+            "id":    id,
+            "name":  name,
+            "state": state
+        ]
+        var req = try request(path: "/rest/v1/cities", method: "POST", body: body)
+        req.setValue("resolution=merge-duplicates", forHTTPHeaderField: "Prefer")
+        try await send(req)
+    }
+
     // MARK: - Profiles
 
     /// Creates a new profile row. Uses UPSERT so re-running is safe.

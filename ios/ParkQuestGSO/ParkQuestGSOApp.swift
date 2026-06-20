@@ -17,7 +17,11 @@ struct ParkQuestGSOApp: App {
             ZStack {
                 // Main app (rendered beneath splash so it's ready instantly)
                 Group {
-                    if userSettings.hasCompletedOnboarding {
+                    if !userSettings.isAuthenticated {
+                        AuthView()
+                    } else if userSettings.userType == .cityAdmin {
+                        CityAdminView()
+                    } else if userSettings.hasCompletedOnboarding {
                         RootView()
                     } else {
                         OnboardingView()
@@ -29,7 +33,7 @@ struct ParkQuestGSOApp: App {
                 .preferredColorScheme(.light)
                 .tint(Theme.primaryGreen)
                 .task {
-                    if userSettings.hasCompletedOnboarding {
+                    if userSettings.isAuthenticated && userSettings.userType == .explorer && userSettings.hasCompletedOnboarding {
                         await game.loadFromCloud(userID: userSettings.userID)
                     }
                 }
