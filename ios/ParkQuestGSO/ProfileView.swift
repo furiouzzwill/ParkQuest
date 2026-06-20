@@ -18,6 +18,7 @@ struct ProfileView: View {
                     recentDiscoveries
                     cloudStatusRow
                     resetButton
+                    signOutButton
                     Spacer(minLength: 30)
                 }
                 .padding(.horizontal, 16)
@@ -232,6 +233,23 @@ struct ProfileView: View {
             .foregroundStyle(Theme.mutedText)
             .padding(.horizontal, 16).padding(.vertical, 10)
             .background(Theme.lockGray.opacity(0.6), in: .capsule)
+        }
+        .buttonStyle(PressableStyle())
+    }
+
+    private var signOutButton: some View {
+        Button {
+            Haptics.medium()
+            withAnimation { userSettings.signOut() }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                Text("Sign Out")
+            }
+            .font(.system(size: 14, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .background(Theme.darkGreen, in: .capsule)
         }
         .buttonStyle(PressableStyle())
     }
