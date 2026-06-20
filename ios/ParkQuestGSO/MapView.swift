@@ -20,6 +20,14 @@ struct MapView: View {
     /// Camera position — starts framing all of Barber Park.
     @State private var mapPosition: MapCameraPosition = .region(.barberPark)
 
+    /// Walking mode: camera follows user with heading, pitched for a
+    /// "look around the park" feel rather than the overhead overview.
+    @State private var isWalkingMode: Bool = false
+
+    /// Look Around (Apple's street-view) scene loaded for the park entrance.
+    /// Non-nil triggers the preview sheet.
+    @State private var lookAroundScene: MKLookAroundScene?
+
     var body: some View {
         ZStack(alignment: .bottom) {
             mapLayer
@@ -77,6 +85,60 @@ struct MapView: View {
                     badgeJustEarned = false
                 }
             )
+        }
+        .sheet(isPresented: Binding(
+            get: { lookAroundScene != nil },
+            set: { if !$0 { lookAroundScene = nil } }
+        )) {
+            if let scene = lookAroundScene {
+                LookAroundPreview(
+                    initialScene: scene,
+                    allowsNavigation: true,
+                    showsRoadLabels: true
+                )
+                .ignoresSafeArea()
+                .presentationDetents([.large])
+            }
+        }
+    }
+
+    // MARK: - Walking mode & Look Around
+
+    private func toggleWalkingMode() {
+        Haptics.medium()
+        withAnimation(.easeInOut(duration: 0.45)) {
+            isWalkingMode.toggle()
+            if isWalkingMode {
+                // Follow the user with heading-up rotation. MapKit falls back
+                // to the park overview when GPS isn't available yet.
+                mapPosition = .userLocation(
+                    followsHeading: true,
+                    fallback: .region(.barberPark)
+                )
+            } else {
+                mapPosition = .region(.barberPark)
+            }
+        }
+    }
+
+    private func peekLookAround() {
+        Haptics.medium()
+        // Prefer the user's current location if we have it; otherwise the park center.
+        let coord = location.currentLocation?.coordinate
+            ?? MKCoordinateRegion.barberPark.center
+        Task {
+            let request = MKLookAroundSceneRequest(coordinate: coord)
+            let scene = try? await request.scene
+            await MainActor.run {
+                if let scene {
+                    lookAroundScene = scene
+                } else {
+                    withAnimation { alreadyToast = "Street view not available here" }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                        withAnimation { alreadyToast = nil }
+                    }
+                }
+            }
         }
     }
 
@@ -155,10 +217,44 @@ struct MapView: View {
 
             Spacer()
 
+            // Look Around (Apple street-view) peek
+            Button {
+                peekLookAround()
+            } label: {
+                Image(systemName: "binoculars.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Theme.primaryGreen)
+                    .frame(width: 40, height: 40)
+                    .background(.white, in: .circle)
+                    .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+            }
+            .accessibilityLabel("Street view")
+
+            // Walking-mode toggle (Pokemon-Go-style follow camera)
+            Button {
+                toggleWalkingMode()
+            } label: {
+                Image(systemName: isWalkingMode ? "figure.walk.circle.fill" : "figure.walk")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(isWalkingMode ? .white : Theme.primaryGreen)
+                    .frame(width: 40, height: 40)
+                    .background(isWalkingMode ? Theme.primaryGreen : .white, in: .circle)
+                    .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+            }
+            .accessibilityLabel(isWalkingMode ? "Exit walking view" : "Walking view")
+
             // Recenter button
             Button {
                 withAnimation {
-                    mapPosition = .region(.barberPark)
+                    if isWalkingMode {
+                        // In walking mode, "recenter" reattaches to the user.
+                        mapPosition = .userLocation(
+                            followsHeading: true,
+                            fallback: .region(.barberPark)
+                        )
+                    } else {
+                        mapPosition = .region(.barberPark)
+                    }
                 }
             } label: {
                 Image(systemName: "scope")
