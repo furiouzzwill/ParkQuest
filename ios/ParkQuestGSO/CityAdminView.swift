@@ -12,9 +12,12 @@ struct CityAdminView: View {
     @Environment(UserSettings.self) private var userSettings
     @Environment(GameState.self)    private var game
 
+    /// Resolves the signed-in city partner's city from local seed data.
+    /// Returns nil for cities not present in SeedData (i.e. any city other
+    /// than Greensboro today). The view falls back to an empty-parks state
+    /// so an Asheville admin isn't shown Greensboro's data by mistake.
     private var city: City? {
         SeedData.allCities.first { $0.displayName == userSettings.city }
-            ?? SeedData.allCities.first
     }
 
     var body: some View {
@@ -127,14 +130,41 @@ struct CityAdminView: View {
 
     private var parksSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("Parks in \(city?.name ?? "Your City")")
+            sectionTitle("Parks in \(city?.name ?? userSettings.city)")
 
-            VStack(spacing: 10) {
-                ForEach(city?.parks ?? []) { park in
-                    parkRow(park)
+            if let parks = city?.parks, !parks.isEmpty {
+                VStack(spacing: 10) {
+                    ForEach(parks) { park in
+                        parkRow(park)
+                    }
                 }
+            } else {
+                emptyParksCard
             }
         }
+    }
+
+    /// Shown when the signed-in city has no parks yet — the state a real new
+    /// city partner sees the moment they redeem their invite.
+    private var emptyParksCard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "mappin.slash")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundStyle(Theme.mutedText.opacity(0.5))
+            Text("No parks yet")
+                .font(.system(size: 15, weight: .heavy, design: .rounded))
+                .foregroundStyle(Theme.darkText)
+            Text("Add your first park to start welcoming explorers to \(city?.name ?? userSettings.city).")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.mutedText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28)
+        .padding(.horizontal, 16)
+        .background(.white, in: .rect(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
     }
 
     private func parkRow(_ park: Park) -> some View {
