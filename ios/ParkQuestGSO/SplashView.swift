@@ -7,12 +7,24 @@ import SwiftUI
 
 struct SplashView: View {
 
+    @Environment(UserSettings.self) private var userSettings
+
     @State private var iconScale: CGFloat    = 0.3
     @State private var iconOpacity: Double   = 0
     @State private var titleOffset: CGFloat  = 20
     @State private var titleOpacity: Double  = 0
     @State private var taglineOpacity: Double = 0
     @State private var glowRadius: CGFloat   = 0
+
+    /// City tagline. Shows the signed-in user's city, or "NORTH CAROLINA"
+    /// before the first sign-in so we don't advertise Greensboro to
+    /// someone about to redeem an Asheville invite code.
+    private var cityTagline: String {
+        guard userSettings.isAuthenticated, !userSettings.city.isEmpty else {
+            return "NORTH CAROLINA"
+        }
+        return userSettings.city.uppercased()
+    }
 
     var body: some View {
         ZStack {
@@ -65,7 +77,7 @@ struct SplashView: View {
                 Spacer().frame(height: 8)
 
                 // City tagline
-                Text("GREENSBORO, NC")
+                Text(cityTagline)
                     .font(.system(size: 13, weight: .heavy, design: .rounded))
                     .tracking(4)
                     .foregroundStyle(.white.opacity(0.65))
@@ -108,4 +120,5 @@ struct SplashView: View {
 
 #Preview {
     SplashView()
+        .environment(UserSettings())
 }

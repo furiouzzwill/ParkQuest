@@ -27,11 +27,6 @@ struct ParkQuestGSOApp: App {
                         OnboardingView()
                     }
                 }
-                .environment(game)
-                .environment(locationManager)
-                .environment(userSettings)
-                .preferredColorScheme(.light)
-                .tint(Theme.primaryGreen)
                 .task {
                     if userSettings.isAuthenticated && userSettings.userType == .explorer && userSettings.hasCompletedOnboarding {
                         await game.loadFromCloud(userID: userSettings.userID)
@@ -50,6 +45,13 @@ struct ParkQuestGSOApp: App {
                         .zIndex(1)
                 }
             }
+            // Environment applied to the whole ZStack so SplashView also
+            // sees userSettings (needed for the city tagline).
+            .environment(game)
+            .environment(locationManager)
+            .environment(userSettings)
+            .preferredColorScheme(.light)
+            .tint(Theme.primaryGreen)
             .animation(.easeInOut(duration: 0.5), value: showSplash)
             .task {
                 try? await Task.sleep(for: .seconds(2.2))
