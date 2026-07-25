@@ -14,8 +14,8 @@
 //  ────────────────────────────────────────────────────────────────
 
 enum SupabaseConfig {
-    static let projectURL = "https://uhxifrgcwjrjqrxayjvn.supabase.co"
-    static let anonKey    = "sb_publishable_R4Srb_e1mrQSqZrVhQwnQQ_0c27I74L"
+    static let projectURL = "https://icpoutduhxvjwjnfvzko.supabase.co"
+    static let anonKey    = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljcG91dGR1aHh2andqbmZ2emtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NDcxNTcsImV4cCI6MjEwMDUyMzE1N30.ezb6Sq4Nh9EtdKF56t0WUaTBcqsePcHJi3BZZQ0M1XI"
 }
 
 // ────────────────────────────────────────────────────────────────
