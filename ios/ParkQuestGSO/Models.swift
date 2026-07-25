@@ -104,6 +104,101 @@ struct Park: Identifiable, Hashable {
     let isLocked: Bool
 }
 
+// MARK: - Partner-created parks (Supabase-backed)
+
+/// Options presented in the "Park Type" dropdown when a city partner
+/// adds a new park via the wizard.
+enum PartnerParkType: String, CaseIterable, Codable, Hashable {
+    case publicPark      = "public_park"
+    case zoo             = "zoo"
+    case botanicalGarden = "botanical_garden"
+    case statePark       = "state_park"
+    case privatePark     = "private"
+    case other           = "other"
+
+    var label: String {
+        switch self {
+        case .publicPark:      return "Public Park"
+        case .zoo:             return "Zoo"
+        case .botanicalGarden: return "Botanical Garden"
+        case .statePark:       return "State Park"
+        case .privatePark:     return "Private"
+        case .other:           return "Other"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .publicPark:      return "tree.fill"
+        case .zoo:             return "pawprint.fill"
+        case .botanicalGarden: return "leaf.fill"
+        case .statePark:       return "mountain.2.fill"
+        case .privatePark:     return "lock.fill"
+        case .other:           return "mappin.and.ellipse"
+        }
+    }
+}
+
+/// A park a City Partner has added through the in-app wizard.
+/// Backed by the `parks` table in Supabase.
+struct PartnerPark: Identifiable, Codable, Hashable {
+    let id: UUID
+    let cityID: String?
+    let parkName: String
+    let parkType: String
+    let address: String?
+    let website: String?
+    let description: String?
+    let contactName: String?
+    let contactEmail: String?
+    let contactPhone: String?
+
+    var parkTypeEnum: PartnerParkType {
+        PartnerParkType(rawValue: parkType) ?? .other
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case cityID        = "city_id"
+        case parkName      = "park_name"
+        case parkType      = "park_type"
+        case address
+        case website
+        case description
+        case contactName   = "contact_name"
+        case contactEmail  = "contact_email"
+        case contactPhone  = "contact_phone"
+    }
+}
+
+/// A landmark inside a partner-created park. Backed by the
+/// `park_geofences` table in Supabase.
+struct PartnerLandmark: Identifiable, Codable, Hashable {
+    let id: UUID
+    let parkID: UUID
+    let name: String
+    let description: String?
+    let latitude: Double
+    let longitude: Double
+    let radiusMeters: Double
+    let rewardPoints: Int
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case parkID        = "park_id"
+        case name
+        case description
+        case latitude
+        case longitude
+        case radiusMeters  = "radius_meters"
+        case rewardPoints  = "reward_points"
+    }
+}
+
 // MARK: - Seed data
 
 enum SeedData {

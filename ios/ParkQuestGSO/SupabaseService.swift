@@ -141,6 +141,121 @@ final class SupabaseService {
         try await send(req)
     }
 
+    // MARK: - Parks (partner-created)
+
+    /// Insert a new park row. Returns the server-assigned uuid so the
+    /// caller can immediately attach geofences to it.
+    func createPark(
+        cityID: String?,
+        parkName: String,
+        parkType: String,
+        address: String?,
+        website: String?,
+        description: String?,
+        contactName: String?,
+        contactEmail: String?,
+        contactPhone: String?,
+        adminUserID: String?
+    ) async throws -> UUID {
+        struct Body: Encodable {
+            let city_id: String?
+            let park_name: String
+            let park_type: String
+            let address: String?
+            let website: String?
+            let description: String?
+            let contact_name: String?
+            let contact_email: String?
+            let contact_phone: String?
+            let admin_user_id: String?
+        }
+        let body = Body(
+            city_id: cityID,
+            park_name: parkName,
+            park_type: parkType,
+            address: address,
+            website: website,
+            description: description,
+            contact_name: contactName,
+            contact_email: contactEmail,
+            contact_phone: contactPhone,
+            admin_user_id: adminUserID
+        )
+        var req = try request(path: "/rest/v1/parks", method: "POST", body: body)
+        req.setValue("return=representation", forHTTPHeaderField: "Prefer")
+
+        struct IDRow: Decodable { let id: UUID }
+        let rows: [IDRow] = try await fetch(req)
+        guard let first = rows.first else {
+            throw SupabaseError.httpError(statusCode: 500, body: "createPark returned no rows")
+        }
+        return first.id
+    }
+
+    /// Fetch every park owned by a given city. Ordered newest-first.
+    func fetchParks(cityID: String) async throws -> [PartnerPark] {
+        let req = try request(
+            path: "/rest/v1/parks",
+            method: "GET",
+            query: [
+                "city_id": "eq.\(cityID)",
+                "select":  "id,city_id,park_name,park_type,address,website,description,contact_name,contact_email,contact_phone",
+                "order":   "created_at.desc"
+            ]
+        )
+        return try await fetch(req)
+    }
+
+    // MARK: - Park geofences (landmarks)
+
+    /// Insert a landmark for a park. No return value — caller re-fetches
+    /// the full landmark list after adding.
+    func createLandmark(
+        parkID: UUID,
+        name: String,
+        description: String?,
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double,
+        rewardPoints: Int
+    ) async throws {
+        struct Body: Encodable {
+            let park_id: String
+            let name: String
+            let description: String?
+            let latitude: Double
+            let longitude: Double
+            let radius_meters: Double
+            let reward_points: Int
+        }
+        let body = Body(
+            park_id: parkID.uuidString.lowercased(),
+            name: name,
+            description: description,
+            latitude: latitude,
+            longitude: longitude,
+            radius_meters: radiusMeters,
+            reward_points: rewardPoints
+        )
+        let req = try request(path: "/rest/v1/park_geofences", method: "POST", body: body)
+        try await send(req)
+    }
+
+    /// Fetch landmarks for a park, ordered oldest-first (the order the
+    /// admin added them, which usually matches a natural tour path).
+    func fetchLandmarks(parkID: UUID) async throws -> [PartnerLandmark] {
+        let req = try request(
+            path: "/rest/v1/park_geofences",
+            method: "GET",
+            query: [
+                "park_id": "eq.\(parkID.uuidString.lowercased())",
+                "select":  "id,park_id,name,description,latitude,longitude,radius_meters,reward_points",
+                "order":   "created_at.asc"
+            ]
+        )
+        return try await fetch(req)
+    }
+
     // MARK: - Badges
 
     /// Returns the park IDs for which the user has earned a badge.

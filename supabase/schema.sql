@@ -20,6 +20,8 @@
 -- ---------------------------------------------------------------------
 -- Clean slate (safe on a fresh project — the drops just no-op)
 -- ---------------------------------------------------------------------
+drop table if exists public.park_geofences cascade;
+drop table if exists public.parks          cascade;
 drop table if exists public.city_invites   cascade;
 drop table if exists public.earned_badges  cascade;
 drop table if exists public.check_ins      cascade;
@@ -101,11 +103,56 @@ create table public.city_invites (
 
 
 -- ---------------------------------------------------------------------
+-- Parks
+-- Parks that city partners have set up via the in-app wizard. Separate
+-- from the hardcoded SeedData parks the explorer sees today — those
+-- (Barber Park, etc.) are compiled into the app. Rows here are the
+-- ones a real city admin creates at runtime.
+-- ---------------------------------------------------------------------
+create table public.parks (
+  id             uuid        primary key default gen_random_uuid(),
+  city_id        text        references public.cities(id) on delete set null,
+  park_name      text        not null,
+  park_type      text        not null default 'public_park',
+  address        text,
+  website        text,
+  description    text,
+  contact_name   text,
+  contact_email  text,
+  contact_phone  text,
+  admin_user_id  uuid,                        -- profile id of the creator; loose ref
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+
+
+-- ---------------------------------------------------------------------
+-- Park geofences (landmarks)
+-- One row per landmark inside a park. The iOS wizard drops these via
+-- either "use current GPS" or by tapping on a map.
+-- ---------------------------------------------------------------------
+create table public.park_geofences (
+  id             uuid        primary key default gen_random_uuid(),
+  park_id        uuid        not null references public.parks(id) on delete cascade,
+  name           text        not null,
+  description    text,
+  latitude       double precision not null,
+  longitude      double precision not null,
+  radius_meters  double precision not null default 50,
+  reward_points  int         not null default 25,
+  created_at     timestamptz not null default now()
+);
+
+
+-- ---------------------------------------------------------------------
 -- Indexes
 -- ---------------------------------------------------------------------
-create index if not exists idx_profiles_city_id      on public.profiles(city_id);
-create index if not exists idx_check_ins_user_id     on public.check_ins(user_id);
-create index if not exists idx_earned_badges_user_id on public.earned_badges(user_id);
+create index if not exists idx_profiles_city_id       on public.profiles(city_id);
+create index if not exists idx_check_ins_user_id      on public.check_ins(user_id);
+create index if not exists idx_earned_badges_user_id  on public.earned_badges(user_id);
+create index if not exists idx_parks_city_id          on public.parks(city_id);
+create index if not exists idx_parks_admin_user_id    on public.parks(admin_user_id);
+create index if not exists idx_park_geofences_park_id on public.park_geofences(park_id);
 
 
 -- ---------------------------------------------------------------------
@@ -113,17 +160,21 @@ create index if not exists idx_earned_badges_user_id on public.earned_badges(use
 -- Permissive policies for the demo — anon key can do everything. Tighten
 -- these before production (auth.uid() checks on writes, at minimum).
 -- ---------------------------------------------------------------------
-alter table public.cities        enable row level security;
-alter table public.profiles      enable row level security;
-alter table public.check_ins     enable row level security;
-alter table public.earned_badges enable row level security;
-alter table public.city_invites  enable row level security;
+alter table public.cities         enable row level security;
+alter table public.profiles       enable row level security;
+alter table public.check_ins      enable row level security;
+alter table public.earned_badges  enable row level security;
+alter table public.city_invites   enable row level security;
+alter table public.parks          enable row level security;
+alter table public.park_geofences enable row level security;
 
-create policy "anon_all" on public.cities        for all using (true) with check (true);
-create policy "anon_all" on public.profiles      for all using (true) with check (true);
-create policy "anon_all" on public.check_ins     for all using (true) with check (true);
-create policy "anon_all" on public.earned_badges for all using (true) with check (true);
-create policy "anon_all" on public.city_invites  for all using (true) with check (true);
+create policy "anon_all" on public.cities         for all using (true) with check (true);
+create policy "anon_all" on public.profiles       for all using (true) with check (true);
+create policy "anon_all" on public.check_ins      for all using (true) with check (true);
+create policy "anon_all" on public.earned_badges  for all using (true) with check (true);
+create policy "anon_all" on public.city_invites   for all using (true) with check (true);
+create policy "anon_all" on public.parks          for all using (true) with check (true);
+create policy "anon_all" on public.park_geofences for all using (true) with check (true);
 
 
 -- =====================================================================

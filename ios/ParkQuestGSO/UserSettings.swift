@@ -60,6 +60,12 @@ final class UserSettings {
         didSet { UserDefaults.standard.set(accessToken, forKey: Keys.accessToken) }
     }
 
+    /// True after a City Partner has been shown the welcome/tour sheet
+    /// on their dashboard once. Prevents showing it every launch.
+    var hasSeenPartnerWelcome: Bool {
+        didSet { UserDefaults.standard.set(hasSeenPartnerWelcome, forKey: Keys.hasSeenPartnerWelcome) }
+    }
+
     // MARK: - Computed
 
     /// Up to 2 initials from the username, uppercased. Falls back to "PQ".
@@ -82,6 +88,7 @@ final class UserSettings {
         authEmail               = UserDefaults.standard.string(forKey: Keys.authEmail)   ?? ""
         isAuthenticated         = UserDefaults.standard.bool(forKey: Keys.isAuthenticated)
         accessToken             = UserDefaults.standard.string(forKey: Keys.accessToken) ?? ""
+        hasSeenPartnerWelcome   = UserDefaults.standard.bool(forKey: Keys.hasSeenPartnerWelcome)
 
         let rawType = UserDefaults.standard.string(forKey: Keys.userType) ?? ""
         userType = UserType(rawValue: rawType) ?? .explorer
@@ -119,10 +126,11 @@ final class UserSettings {
     func signOut() {
         let token = accessToken
         Task { await AuthService.shared.signOut(accessToken: token) }
-        authEmail       = ""
-        accessToken     = ""
-        isAuthenticated = false
+        authEmail             = ""
+        accessToken           = ""
+        isAuthenticated       = false
         hasCompletedOnboarding = false
+        hasSeenPartnerWelcome = false     // next partner should see the welcome flow
     }
 
     /// City-Partner signup helper: invite has already been redeemed (and the
@@ -187,5 +195,6 @@ final class UserSettings {
         static let authEmail       = "pq_authEmail"
         static let isAuthenticated = "pq_isAuthenticated"
         static let accessToken     = "pq_accessToken"
+        static let hasSeenPartnerWelcome = "pq_hasSeenPartnerWelcome"
     }
 }
