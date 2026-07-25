@@ -44,8 +44,21 @@ struct AuthView: View {
                 .padding(.horizontal, 24)
             }
             .scrollDismissesKeyboard(.interactively)
+            // Keyboard toolbar with Done + tap-outside dismisses too.
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.darkGreen)
+                }
+            }
+            .onTapGesture { focusedField = nil }
         }
-        .ignoresSafeArea()
+        // Deliberately NOT .ignoresSafeArea() on the ZStack — that was
+        // breaking SwiftUI's automatic keyboard avoidance (the scroll
+        // couldn't shift up to reveal focused fields). The background
+        // gradient handles its own edge-to-edge fill.
         .onAppear {
             withAnimation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.1)) {
                 logoScale   = 1
