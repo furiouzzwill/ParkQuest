@@ -123,14 +123,24 @@ final class UserSettings {
 
     /// Wipes auth + identity state. Called from the Profile screen sign-out
     /// button. Does not delete check-ins / badges — those are keyed to userID.
+    ///
+    /// Also resets tenancy back to the Explorer default so the next signup
+    /// on this device isn't misrouted as the previous account's role
+    /// (previously a City Admin logging out and then signing up fresh as
+    /// an Explorer would still land in CityAdminView because userType
+    /// stuck around).
     func signOut() {
         let token = accessToken
         Task { await AuthService.shared.signOut(accessToken: token) }
-        authEmail             = ""
-        accessToken           = ""
-        isAuthenticated       = false
+        authEmail              = ""
+        accessToken            = ""
+        isAuthenticated        = false
         hasCompletedOnboarding = false
-        hasSeenPartnerWelcome = false     // next partner should see the welcome flow
+        hasSeenPartnerWelcome  = false     // next partner should see the welcome flow
+        userType               = .explorer
+        cityID                 = "gso"
+        city                   = "Greensboro, NC"
+        username               = ""
     }
 
     /// City-Partner signup helper: invite has already been redeemed (and the
