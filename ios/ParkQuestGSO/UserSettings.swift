@@ -143,6 +143,40 @@ final class UserSettings {
         username               = ""
     }
 
+    /// Testing bypass — skips invite redemption and creates a fresh city
+    /// + city_admin profile inline. Only reachable via the "Testing? Skip
+    /// invite →" toggle on AuthView. NOT for production use — real cities
+    /// should always go through an invite code.
+    func applyCityAdminTestSignUp(authUser: AuthUser, cityName: String, state: String) {
+        // Generate a stable-ish id from the name so the same test city
+        // maps to a consistent Supabase row when re-created.
+        let slug = cityName.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+        let id = "\(slug.isEmpty ? "test" : slug)-\(UUID().uuidString.prefix(4))"
+
+        cityID    = id
+        city      = "\(cityName), \(state)"
+        username  = cityName
+        userType  = .cityAdmin
+        applyAuthUser(authUser)
+        hasCompletedOnboarding = true
+
+        Task {
+            do {
+                try await SupabaseService.shared.createCity(id: id, name: cityName, state: state)
+                try await SupabaseService.shared.createProfile(
+                    id: authUser.id,
+                    username: cityName,
+                    userType: .cityAdmin,
+                    cityID: id
+                )
+            } catch {
+                print("⚠️ City admin test signup error: \(error)")
+            }
+        }
+    }
+
     /// City-Partner signup helper: invite has already been redeemed (and the
     /// city pre-exists in Supabase). This just creates the city_admin profile
     /// and updates local state so the app routes straight to CityAdminView.

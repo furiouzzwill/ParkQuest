@@ -24,8 +24,15 @@ struct AuthView: View {
     /// ParkQuest admin (i.e. self-signup is intentionally not allowed).
     @State private var inviteCode: String = ""
 
+    /// Testing / demo escape hatch — when true, City Partner signup
+    /// skips invite redemption and creates a fresh city inline from
+    /// the name + state fields below.
+    @State private var skipInviteForTesting: Bool = false
+    @State private var testCityName: String = ""
+    @State private var testCityState: String = ""
+
     @FocusState private var focusedField: Field?
-    private enum Field { case email, password, confirm, inviteCode }
+    private enum Field { case email, password, confirm, inviteCode, testCityName, testCityState }
 
     private var isCityPartnerSignUp: Bool { !isLogin && selectedRole == .cityAdmin }
 
@@ -139,14 +146,44 @@ struct AuthView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 if isCityPartnerSignUp {
-                    field(icon: "ticket.fill", placeholder: "Invite code", text: $inviteCode, focused: .inviteCode)
-                        .textCase(.uppercase)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    Text("Cities can't self-sign-up. Contact ParkQuest to receive a code.")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.65))
-                        .padding(.horizontal, 4)
-                        .transition(.opacity)
+                    if skipInviteForTesting {
+                        field(icon: "building.2.fill", placeholder: "City name", text: $testCityName, focused: .testCityName)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        field(icon: "mappin.circle.fill", placeholder: "State (e.g. NC)", text: $testCityState, focused: .testCityState)
+                            .textCase(.uppercase)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    } else {
+                        field(icon: "ticket.fill", placeholder: "Invite code", text: $inviteCode, focused: .inviteCode)
+                            .textCase(.uppercase)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        Text("Cities can't self-sign-up. Contact ParkQuest to receive a code.")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.65))
+                            .padding(.horizontal, 4)
+                            .transition(.opacity)
+                    }
+
+                    // Testing escape hatch — clearly labeled so it doesn't
+                    // read as a normal user path.
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            skipInviteForTesting.toggle()
+                            errorMessage = ""
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: skipInviteForTesting ? "arrow.uturn.backward" : "hammer.fill")
+                                .font(.system(size: 10, weight: .heavy))
+                            Text(skipInviteForTesting ? "Use invite code instead" : "Testing? Skip invite →")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        }
+                        .foregroundStyle(.white.opacity(0.75))
+                        .padding(.horizontal, 10).padding(.vertical, 6)
+                        .background(.white.opacity(0.12), in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                    .transition(.opacity)
                 }
             }
 
@@ -293,7 +330,13 @@ struct AuthView: View {
         if isLogin { return emailOK && passOK }
         let signupBaseOK = emailOK && passOK && confirmPass == password
         if !isCityPartnerSignUp { return signupBaseOK }
-        // City Partner: also require a non-empty invite code.
+        if skipInviteForTesting {
+            // Skip mode: require city name + a 2-char-min state.
+            let cityOK  = !testCityName.trimmingCharacters(in: .whitespaces).isEmpty
+            let stateOK = testCityState.trimmingCharacters(in: .whitespaces).count >= 2
+            return signupBaseOK && cityOK && stateOK
+        }
+        // Normal City Partner: require a non-empty invite code.
         return signupBaseOK && !inviteCode.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
@@ -301,12 +344,19 @@ struct AuthView: View {
 
     private func advanceFocus(from field: Field) {
         switch field {
-        case .email:       focusedField = .password
-        case .password:    focusedField = isLogin ? nil : .confirm
-        case .confirm:     focusedField = isCityPartnerSignUp ? .inviteCode : nil
-        case .inviteCode:  focusedField = nil; submit()
+        case .email:      focusedField = .password
+        case .password:   focusedField = isLogin ? nil : .confirm
+        case .confirm:
+            if isCityPartnerSignUp {
+                focusedField = skipInviteForTesting ? .testCityName : .inviteCode
+            } else {
+                focusedField = nil
+                submit()
+            }
+        case .inviteCode:    focusedField = nil; submit()
+        case .testCityName:  focusedField = .testCityState
+        case .testCityState: focusedField = nil; submit()
         }
-        if field == .confirm && !isCityPartnerSignUp { submit() }
     }
 
     private func submit() {
@@ -316,15 +366,11 @@ struct AuthView: View {
         Task {
             defer { isLoading = false }
             do {
-                // City Partner signup is invite-only: validate (and atomically
-                // redeem) the code BEFORE creating the auth user. If the code
-                // is bad we want to fail early without leaving an orphan auth
-                // row behind.
+                // City Partner signup: normally we redeem an invite code
+                // BEFORE creating the auth user so a bad code fails early
+                // without leaving an orphan. The testing bypass skips this.
                 var redeemed: RedeemedCity? = nil
-                if isCityPartnerSignUp {
-                    // Use a stable client-side id for redeemed_by so we can
-                    // back-trace which device redeemed which code. The real
-                    // profile is created after auth signup succeeds.
+                if isCityPartnerSignUp && !skipInviteForTesting {
                     redeemed = try await SupabaseService.shared.redeemInvite(
                         code: inviteCode,
                         redeemerID: userSettings.userID
@@ -336,7 +382,13 @@ struct AuthView: View {
                     : try await AuthService.shared.signUp(email: email, password: password)
 
                 await MainActor.run {
-                    if let redeemed {
+                    if isCityPartnerSignUp && skipInviteForTesting {
+                        userSettings.applyCityAdminTestSignUp(
+                            authUser: user,
+                            cityName: testCityName.trimmingCharacters(in: .whitespaces),
+                            state:    testCityState.trimmingCharacters(in: .whitespaces).uppercased()
+                        )
+                    } else if let redeemed {
                         userSettings.applyCityAdminSignUp(authUser: user, redeemed: redeemed)
                     } else {
                         userSettings.applyAuthUser(user)
